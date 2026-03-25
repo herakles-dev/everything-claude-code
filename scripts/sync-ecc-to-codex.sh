@@ -28,6 +28,8 @@ CONFIG_FILE="$CODEX_HOME/config.toml"
 AGENTS_FILE="$CODEX_HOME/AGENTS.md"
 AGENTS_ROOT_SRC="$REPO_ROOT/AGENTS.md"
 AGENTS_CODEX_SUPP_SRC="$REPO_ROOT/.codex/AGENTS.md"
+ROLE_CONFIG_SRC="$REPO_ROOT/.codex/agents"
+ROLE_CONFIG_DEST="$CODEX_HOME/agents"
 SKILLS_SRC="$REPO_ROOT/.agents/skills"
 SKILLS_DEST="$CODEX_HOME/skills"
 PROMPTS_SRC="$REPO_ROOT/commands"
@@ -131,6 +133,7 @@ MCP_MERGE_SCRIPT="$REPO_ROOT/scripts/codex/merge-mcp-config.js"
 
 require_path "$REPO_ROOT/AGENTS.md" "ECC AGENTS.md"
 require_path "$AGENTS_CODEX_SUPP_SRC" "ECC Codex AGENTS supplement"
+require_path "$ROLE_CONFIG_SRC" "ECC Codex agent config directory"
 require_path "$SKILLS_SRC" "ECC skills directory"
 require_path "$PROMPTS_SRC" "ECC commands directory"
 require_path "$HOOKS_INSTALLER" "ECC global git hooks installer"
@@ -243,6 +246,17 @@ for skill_dir in "$SKILLS_SRC"/*; do
   run_or_echo "rm -rf \"$dest\""
   run_or_echo "cp -R \"$skill_dir\" \"$dest\""
   skills_count=$((skills_count + 1))
+done
+
+log "Syncing ECC Codex agent role configs"
+run_or_echo "mkdir -p \"$ROLE_CONFIG_DEST\""
+role_count=0
+for role_file in "$ROLE_CONFIG_SRC"/*.toml; do
+  [[ -f "$role_file" ]] || continue
+  role_name="$(basename "$role_file")"
+  dest="$ROLE_CONFIG_DEST/$role_name"
+  run_or_echo "cp \"$role_file\" \"$dest\""
+  role_count=$((role_count + 1))
 done
 
 log "Generating prompt files from ECC commands"
@@ -470,21 +484,22 @@ fi
 
 log "Installing global git safety hooks"
 if [[ "$MODE" == "dry-run" ]]; then
-  "$HOOKS_INSTALLER" --dry-run
+  bash "$HOOKS_INSTALLER" --dry-run
 else
-  "$HOOKS_INSTALLER"
+  bash "$HOOKS_INSTALLER"
 fi
 
 log "Running global regression sanity check"
 if [[ "$MODE" == "dry-run" ]]; then
-  printf '[dry-run] %s\n' "$SANITY_CHECKER"
+  printf '[dry-run] bash %s\n' "$SANITY_CHECKER"
 else
-  "$SANITY_CHECKER"
+  bash "$SANITY_CHECKER"
 fi
 
 log "Sync complete"
 log "Backup saved at: $BACKUP_DIR"
 log "Skills synced: $skills_count"
+log "Agent role configs synced: $role_count"
 log "Prompts generated: $((prompt_count + extension_count)) (commands: $prompt_count, extensions: $extension_count)"
 
 if [[ "$MODE" == "apply" ]]; then

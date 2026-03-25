@@ -12,6 +12,7 @@ CONFIG_FILE="$CODEX_HOME/config.toml"
 AGENTS_FILE="$CODEX_HOME/AGENTS.md"
 PROMPTS_DIR="$CODEX_HOME/prompts"
 SKILLS_DIR="$CODEX_HOME/skills"
+ROLE_DIR="$CODEX_HOME/agents"
 HOOKS_DIR_EXPECT="${ECC_GLOBAL_HOOKS_DIR:-$CODEX_HOME/git-hooks}"
 
 failures=0
@@ -89,12 +90,14 @@ fi
 if [[ -f "$CONFIG_FILE" ]]; then
   check_config_pattern '^multi_agent\s*=\s*true' "multi_agent is enabled"
   check_config_absent '^\s*collab\s*=' "deprecated collab flag is absent"
-  check_config_pattern '^persistent_instructions\s*=' "persistent_instructions is configured"
+  check_config_pattern '^profile\s*=\s*"full-access"' "default profile is full-access"
+  check_config_pattern '^\[profiles\.full-access\]' "profiles.full-access exists"
   check_config_pattern '^\[profiles\.strict\]' "profiles.strict exists"
   check_config_pattern '^\[profiles\.yolo\]' "profiles.yolo exists"
 
   for section in \
     'mcp_servers.github' \
+    'mcp_servers.exa' \
     'mcp_servers.memory' \
     'mcp_servers.sequential-thinking' \
     'mcp_servers.context7-mcp'
@@ -150,6 +153,26 @@ if [[ -d "$SKILLS_DIR" ]]; then
   fi
 else
   fail "Skills directory missing ($SKILLS_DIR)"
+fi
+
+if [[ -d "$ROLE_DIR" ]]; then
+  missing_roles=0
+  for role_file in explorer.toml reviewer.toml docs-researcher.toml; do
+    if [[ -f "$ROLE_DIR/$role_file" ]]; then
+      :
+    else
+      printf '  - missing agent role config: %s\n' "$role_file"
+      missing_roles=$((missing_roles + 1))
+    fi
+  done
+
+  if [[ "$missing_roles" -eq 0 ]]; then
+    ok "Global Codex agent role configs are present"
+  else
+    fail "$missing_roles required agent role configs are missing"
+  fi
+else
+  fail "Agent role config directory missing ($ROLE_DIR)"
 fi
 
 if [[ -f "$PROMPTS_DIR/ecc-prompts-manifest.txt" ]]; then
