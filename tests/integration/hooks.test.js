@@ -179,6 +179,17 @@ function cleanupTestDir(testDir) {
   fs.rmSync(testDir, { recursive: true, force: true });
 }
 
+function stagePluginRuntime(homeDir, relativePaths) {
+  const pluginRoot = path.join(homeDir, '.claude', 'plugins', 'everything-claude-code');
+  for (const relativePath of relativePaths) {
+    const sourcePath = path.join(REPO_ROOT, relativePath);
+    const destinationPath = path.join(pluginRoot, relativePath);
+    fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+    fs.copyFileSync(sourcePath, destinationPath);
+  }
+  return pluginRoot;
+}
+
 function getHookCommandByDescription(hooks, lifecycle, descriptionText) {
   const hookGroup = hooks.hooks[lifecycle]?.find(
     entry => entry.description && entry.description.includes(descriptionText)
@@ -265,6 +276,35 @@ async function runTests() {
     const payload = getSessionStartPayload(result.stdout);
     assert.ok(payload.hookSpecificOutput, 'Should include hookSpecificOutput');
     assert.strictEqual(payload.hookSpecificOutput.hookEventName, 'SessionStart');
+  })) passed++; else failed++;
+
+  if (await asyncTest('Stop hook resolves plugin root when CLAUDE_PLUGIN_ROOT is unset', async () => {
+    const homeDir = createTestDir();
+    try {
+      stagePluginRuntime(homeDir, [
+        path.join('scripts', 'hooks', 'run-with-flags.js'),
+        path.join('scripts', 'hooks', 'check-console-log.js'),
+        path.join('scripts', 'lib', 'hook-flags.js'),
+        path.join('scripts', 'lib', 'utils.js'),
+      ]);
+
+      const hookCommand = getHookCommandByDescription(
+        hooks,
+        'Stop',
+        'Check for console.log in modified files after each response'
+      );
+
+      const result = await runHookCommand(hookCommand, {}, {
+        HOME: homeDir,
+        CLAUDE_PLUGIN_ROOT: '',
+      });
+
+      assert.strictEqual(result.code, 0, `Expected stop hook to exit 0, got ${result.code}: ${result.stderr}`);
+      assert.ok(!result.stderr.includes("Cannot find module '/scripts/hooks/run-with-flags.js'"), 'Should not resolve to the filesystem root');
+      assert.ok(!result.stderr.includes('could not resolve ECC plugin root'), 'Should discover the plugin root from known install paths');
+    } finally {
+      cleanupTestDir(homeDir);
+    }
   })) passed++; else failed++;
 
   if (await asyncTest('PreCompact hook logs to stderr', async () => {
