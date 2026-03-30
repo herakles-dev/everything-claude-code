@@ -42,7 +42,9 @@ function findPowerShell() {
   if (!isWSL()) return null;
 
   const candidates = [
-    '/mnt/c/Program Files/PowerShell/7/pwsh.exe',      // PowerShell 7
+    'pwsh.exe',        // WSL interop resolves from Windows PATH
+    'powershell.exe',  // WSL interop for Windows PowerShell
+    '/mnt/c/Program Files/PowerShell/7/pwsh.exe',      // PowerShell 7 (default install)
     '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe', // Windows PowerShell
   ];
 
