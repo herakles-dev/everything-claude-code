@@ -43,8 +43,9 @@ STAGING_PATH="$HOME/opensource-staging/${PROJECT_NAME}"
 Ask the user:
 1. "Which project?" (if not found)
 2. "License? (MIT / Apache-2.0 / GPL-3.0 / BSD-3-Clause)"
-3. "GitHub repo name?" (default: project name)
-4. "Description for README?" (analyze project for suggestion)
+3. "GitHub org or username?" (default: detect via `gh api user -q .login`)
+4. "GitHub repo name?" (default: project name)
+5. "Description for README?" (analyze project for suggestion)
 
 #### Step 2: Create Staging Directory
 
@@ -110,7 +111,7 @@ Generate SANITIZATION_REPORT.md inside {STAGING_PATH}/ with PASS/FAIL verdict.
 Wait for completion. Read `{STAGING_PATH}/SANITIZATION_REPORT.md`.
 
 **If FAIL:** Show findings to user. Ask: "Fix these and re-scan, or abort?"
-- If fix: Apply fixes, re-run sanitizer
+- If fix: Apply fixes, re-run sanitizer (maximum 3 retry attempts — after 3 FAILs, present all findings and ask user to fix manually)
 - If abort: Clean up staging directory
 
 **If PASS or PASS WITH WARNINGS:** Continue to Step 5.
@@ -159,11 +160,11 @@ Files generated:
   - CONTRIBUTING.md
   - .env.example ({N} variables)
 
-Sanitization: PASS
+Sanitization: {sanitization_verdict}
 
 Next steps:
   1. Review: cd {STAGING_PATH}
-  2. Create repo: gh repo create {org}/{repo} --public
+  2. Create repo: gh repo create {github_org}/{github_repo} --public
   3. Push: git remote add origin ... && git push -u origin main
 
 Proceed with GitHub creation? (yes/no/review first)
@@ -172,8 +173,8 @@ Proceed with GitHub creation? (yes/no/review first)
 #### Step 7: GitHub Publish (on user approval)
 
 ```bash
-cd {STAGING_PATH}
-gh repo create {org}/{repo} --public --source=. --push --description "{description}"
+cd "{STAGING_PATH}"
+gh repo create "{github_org}/{github_repo}" --public --source=. --push --description "{description}"
 ```
 
 ---

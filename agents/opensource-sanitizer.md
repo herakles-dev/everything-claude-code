@@ -29,26 +29,23 @@ pattern: [A-Za-z0-9_]*(api[_-]?key|apikey|api[_-]?secret)[A-Za-z0-9_]*\s*[=:]\s*
 
 # AWS
 pattern: AKIA[0-9A-Z]{16}
-pattern: aws_secret_access_key\s*=\s*[A-Za-z0-9+/=]{40}
+pattern: (?i)(aws_secret_access_key|aws_secret)\s*[=:]\s*['"]?[A-Za-z0-9+/=]{20,}
 
 # Database URLs with credentials
 pattern: (postgres|mysql|mongodb|redis)://[^:]+:[^@]+@[^\s'"]+
 
-# JWT tokens (actual tokens, not placeholder references)
-pattern: eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}
+# JWT tokens (3-segment: header.payload.signature)
+pattern: eyJ[A-Za-z0-9_-]{20,}\.eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]+
 
 # Private keys
 pattern: -----BEGIN\s+(RSA\s+|EC\s+|DSA\s+|OPENSSH\s+)?PRIVATE KEY-----
 
-# GitHub tokens
-pattern: gh[ps]_[A-Za-z0-9_]{36}
+# GitHub tokens (personal, server, OAuth, user-to-server)
+pattern: gh[pousr]_[A-Za-z0-9_]{36,}
 pattern: github_pat_[A-Za-z0-9_]{22,}
 
 # Google OAuth secrets
 pattern: GOCSPX-[A-Za-z0-9_-]+
-
-# High-entropy strings in config files (WARNING — manual review)
-pattern: ^[A-Z_]+=[A-Za-z0-9+/=_-]{32,}$
 
 # Slack webhooks
 pattern: https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[A-Za-z0-9]+
@@ -56,6 +53,14 @@ pattern: https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[A-Za-z0-9]+
 # SendGrid / Mailgun
 pattern: SG\.[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{43}
 pattern: key-[A-Za-z0-9]{32}
+```
+
+#### Heuristic Patterns (WARNING — manual review, does NOT auto-fail)
+
+```
+# High-entropy strings in config files
+pattern: ^[A-Z_]+=[A-Za-z0-9+/=_-]{32,}$
+severity: WARNING (manual review needed)
 ```
 
 ### Step 2: PII Scan (CRITICAL)
@@ -78,7 +83,9 @@ severity: CRITICAL
 
 ```
 # Absolute paths to specific user home directories
-pattern: /home/[a-z]+/  (anything other than /home/user/)
+pattern: /home/[a-z][a-z0-9_-]*/  (anything other than /home/user/)
+pattern: /Users/[A-Za-z][A-Za-z0-9_-]*/  (macOS home directories)
+pattern: C:\\Users\\[A-Za-z]  (Windows home directories)
 severity: CRITICAL
 
 # Internal secret file references
@@ -172,7 +179,7 @@ Output: `SANITIZATION_REPORT.md` — PASS WITH WARNINGS (one hardcoded port in R
 ## Rules
 
 - **Never** display full secret values — truncate to first 4 chars + "..."
-- **Never** modify any files — read-only
+- **Never** modify source files — only generate reports (SANITIZATION_REPORT.md)
 - **Always** scan every text file, not just known extensions
 - **Always** check git history, even for fresh repos
 - **Be paranoid** — false positives are acceptable, false negatives are not
